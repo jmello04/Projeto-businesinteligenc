@@ -44,6 +44,9 @@ def status() -> dict:
 async def ingest_apac(request: Request) -> dict:
     """Recebe XML da APAC e retorna o dado no formato canonico NGSI-LD.
 
+    O corpo da requisicao deve conter um XML valido com os campos
+    temperatura, chuva_mm e nivel_rio.
+
     Args:
         request: Requisicao HTTP com o XML da APAC no corpo.
 
@@ -68,6 +71,9 @@ async def ingest_apac(request: Request) -> dict:
 @app.post("/ingest/cttu")
 async def ingest_cttu(request: Request) -> dict:
     """Recebe JSON da CTTU e retorna o dado no formato canonico NGSI-LD.
+
+    O corpo da requisicao deve ser um JSON com os campos via, status
+    e velocidade_media.
 
     Args:
         request: Requisicao HTTP com o payload JSON da CTTU.
@@ -112,6 +118,9 @@ def cache_apac(sensor_id: str, forcar_falha: bool = False) -> dict:
 @app.post("/alagamento")
 async def registrar_alagamento(request: Request) -> dict:
     """Registra um ponto de alagamento no banco de dados.
+
+    O corpo da requisicao deve ser um JSON com os campos obrigatorios
+    latitude, longitude e descricao.
 
     Args:
         request: Requisicao HTTP com o payload JSON do ponto de alagamento.
