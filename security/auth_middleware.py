@@ -1,31 +1,56 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
-# Token fixo que representa o "segredo compartilhado" entre os sistemas.
-# Em produção, viria de variável de ambiente ou cofre de segredos.
-TOKEN_VALIDO = "recife-secret-2025"
+from app.core.config import get_settings
+
+# Rotas publicas que dispensam autenticacao (ex.: healthcheck).
+_PUBLIC_PATHS: frozenset[str] = frozenset({"/status", "/"})
 
 
 class AutenticacaoMiddleware(BaseHTTPMiddleware):
-    # Zero Trust significa: nunca confiar automaticamente em nenhuma requisição,
-    # mesmo que venha de dentro da rede interna. Todo acesso precisa ser
-    # autenticado explicitamente. Aqui simulamos isso exigindo um token
-    # no header de TODAS as requisições, sem exceção para IPs internos.
+    """Middleware de autenticacao baseado em token de cabecalho.
+
+    Implementa o principio Zero Trust: nenhuma requisicao e automaticamente
+    confiavel, mesmo oriunda da rede interna. Todo acesso precisa de
+    autenticacao explicita via X-Sistema-Token.
+
+    Rotas listadas em _PUBLIC_PATHS ficam isentas para permitir
+    healthchecks sem credenciais.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        """Inicializa o middleware carregando a configuracao de API key.
+
+        Args:
+            app: Aplicacao ASGI que recebera as requisicoes autenticadas.
+        """
+        super().__init__(app)
+        self._api_key: str = get_settings().api_key
 
     async def dispatch(self, request: Request, call_next):
-        # A rota /status é pública para permitir healthcheck sem token.
-        if request.url.path in ("/status", "/"):
+        """Verifica o token antes de encaminhar a requisicao.
+
+        Args:
+            request: Objeto de requisicao HTTP recebido.
+            call_next: Proximo handler na cadeia de middlewares.
+
+        Returns:
+            JSONResponse 403 se o token estiver ausente ou invalido;
+            caso contrario, a resposta do handler downstream.
+        """
+        if request.url.path in _PUBLIC_PATHS:
             return await call_next(request)
 
-        token = request.headers.get("X-Sistema-Token")
+        token: str | None = request.headers.get("X-Sistema-Token")
 
-        if token != TOKEN_VALIDO:
+        if token != self._api_key:
             return JSONResponse(
                 status_code=403,
                 content={
                     "erro": "Acesso negado.",
-                    "detalhe": "Header X-Sistema-Token ausente ou inválido.",
+                    "detalhe": "Header X-Sistema-Token ausente ou invalido.",
                 },
             )
 
