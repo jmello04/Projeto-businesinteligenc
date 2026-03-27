@@ -1,23 +1,36 @@
+"""Adapter that converts APAC XML climate measurements to the canonical format."""
+
 import xml.etree.ElementTree as ET
+from typing import Any
 
 from models.canonical import montar_contexto
 
 
-def converter_xml_apac(xml_str: str) -> dict:
-    # Recebe uma string XML da APAC com dados climáticos e converte
-    # para o padrão canônico interno do sistema.
-    #
-    # Exemplo de XML esperado:
-    # <medicao id="APAC-001">
-    #   <temperatura>28.5</temperatura>
-    #   <chuva_mm>12.3</chuva_mm>
-    #   <nivel_rio>1.8</nivel_rio>
-    # </medicao>
+def converter_xml_apac(xml_str: str) -> dict[str, Any]:
+    """Parse an APAC XML measurement and return a canonical context object.
 
+    Expects an XML document in the following shape::
+
+        <medicao id="APAC-001">
+          <temperatura>28.5</temperatura>
+          <chuva_mm>12.3</chuva_mm>
+          <nivel_rio>1.8</nivel_rio>
+        </medicao>
+
+    Args:
+        xml_str: Raw XML string received from the APAC data source.
+
+    Returns:
+        Canonical NGSI-LD-inspired dictionary produced by
+        :func:`models.canonical.montar_contexto`.
+
+    Raises:
+        ValueError: If the XML is malformed or any required field is missing.
+    """
     try:
         root = ET.fromstring(xml_str)
-    except ET.ParseError as e:
-        raise ValueError(f"XML inválido recebido da APAC: {e}")
+    except ET.ParseError as exc:
+        raise ValueError(f"XML inválido recebido da APAC: {exc}") from exc
 
     def campo(tag: str) -> str:
         el = root.find(tag)

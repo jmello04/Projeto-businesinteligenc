@@ -1,4 +1,8 @@
-from fastapi import Request
+"""Request authentication middleware based on the X-Sistema-Token header."""
+
+from typing import Callable
+
+from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
@@ -29,7 +33,7 @@ class AutenticacaoMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self._api_key: str = get_settings().api_key
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Verifica o token antes de encaminhar a requisicao.
 
         Args:
